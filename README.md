@@ -46,3 +46,6 @@ Com a aplicação em execução, acesse a interface interativa em:
 * Implementação de rotas protegidas e validação de permissões (RolesGuard).
 * Revogação de tokens para logout seguro.
 * Endpoint de introspecção para integração com AWS API Gateway.
+## Versão
+
+v1.0.0 - Entrega T1
