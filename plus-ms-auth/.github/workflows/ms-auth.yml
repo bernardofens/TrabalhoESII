@@ -1,0 +1,49 @@
+name: CI/CD - plus-ms-auth
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: plus-ms-auth/package-lock.json
+
+      - name: Install dependencies
+        working-directory: plus-ms-auth
+        run: npm ci
+
+      - name: Run tests
+        working-directory: plus-ms-auth
+        run: npm test
+
+      - name: Build NestJS application
+        working-directory: plus-ms-auth
+        run: npm run build
+
+      - name: Login to Docker Hub
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push Docker image
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: docker/build-push-action@v5
+        with:
+          context: plus-ms-auth
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/plus-ms-auth:latest
