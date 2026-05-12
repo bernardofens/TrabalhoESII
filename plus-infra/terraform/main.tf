@@ -8,9 +8,10 @@ terraform {
 }
 
 provider "aws" {
-  region                      = var.region
-  access_key                  = "test"
-  secret_key                  = "test"
+  region     = var.region
+  access_key = "test"
+  secret_key = "test"
+
   skip_credentials_validation = true
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
@@ -24,20 +25,17 @@ provider "aws" {
   }
 }
 
-# ─── S3 ───────────────────────────────────────────────────────────────────────
-
 resource "aws_s3_bucket" "media" {
   bucket = "plus-media"
 }
 
 resource "aws_s3_bucket_versioning" "media" {
   bucket = aws_s3_bucket.media.id
+
   versioning_configuration {
     status = "Enabled"
   }
 }
-
-# ─── RDS ──────────────────────────────────────────────────────────────────────
 
 resource "aws_db_instance" "auth" {
   identifier          = "plus-auth-db"
@@ -53,8 +51,6 @@ resource "aws_db_instance" "auth" {
   skip_final_snapshot = true
 }
 
-# ─── API Gateway ──────────────────────────────────────────────────────────────
-
 resource "aws_api_gateway_rest_api" "plus" {
   name = "plus-api"
 }
@@ -64,8 +60,6 @@ resource "aws_api_gateway_resource" "auth" {
   parent_id   = aws_api_gateway_rest_api.plus.root_resource_id
   path_part   = "auth"
 }
-
-# POST /auth/login
 
 resource "aws_api_gateway_resource" "auth_login" {
   rest_api_id = aws_api_gateway_rest_api.plus.id
@@ -89,8 +83,6 @@ resource "aws_api_gateway_integration" "auth_login" {
   uri                     = "http://${var.ms_auth_host}:${var.ms_auth_port}/login"
 }
 
-# POST /auth/refresh
-
 resource "aws_api_gateway_resource" "auth_refresh" {
   rest_api_id = aws_api_gateway_rest_api.plus.id
   parent_id   = aws_api_gateway_resource.auth.id
@@ -112,8 +104,6 @@ resource "aws_api_gateway_integration" "auth_refresh" {
   integration_http_method = "POST"
   uri                     = "http://${var.ms_auth_host}:${var.ms_auth_port}/refresh"
 }
-
-# POST /auth/logout
 
 resource "aws_api_gateway_resource" "auth_logout" {
   rest_api_id = aws_api_gateway_rest_api.plus.id
@@ -137,8 +127,6 @@ resource "aws_api_gateway_integration" "auth_logout" {
   uri                     = "http://${var.ms_auth_host}:${var.ms_auth_port}/logout"
 }
 
-# GET /auth/me
-
 resource "aws_api_gateway_resource" "auth_me" {
   rest_api_id = aws_api_gateway_rest_api.plus.id
   parent_id   = aws_api_gateway_resource.auth.id
@@ -160,8 +148,6 @@ resource "aws_api_gateway_integration" "auth_me" {
   integration_http_method = "GET"
   uri                     = "http://${var.ms_auth_host}:${var.ms_auth_port}/me"
 }
-
-# ─── Deployment ───────────────────────────────────────────────────────────────
 
 resource "aws_api_gateway_deployment" "plus" {
   rest_api_id = aws_api_gateway_rest_api.plus.id
