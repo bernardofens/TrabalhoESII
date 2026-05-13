@@ -25,6 +25,7 @@ provider "aws" {
   }
 }
 
+# ─── S3 ───────────────────────────────────────────────────────────────────────
 resource "aws_s3_bucket" "media" {
   bucket = "plus-media"
 }
@@ -37,6 +38,7 @@ resource "aws_s3_bucket_versioning" "media" {
   }
 }
 
+# ─── RDS (Ministack provisiona um container Postgres real) ────────────────────
 resource "aws_db_instance" "auth" {
   identifier          = "plus-auth-db"
   engine              = "postgres"
@@ -51,6 +53,7 @@ resource "aws_db_instance" "auth" {
   skip_final_snapshot = true
 }
 
+# ─── API Gateway ──────────────────────────────────────────────────────────────
 resource "aws_api_gateway_rest_api" "plus" {
   name = "plus-api"
 }
@@ -61,6 +64,7 @@ resource "aws_api_gateway_resource" "auth" {
   path_part   = "auth"
 }
 
+# POST /auth/login
 resource "aws_api_gateway_resource" "auth_login" {
   rest_api_id = aws_api_gateway_rest_api.plus.id
   parent_id   = aws_api_gateway_resource.auth.id
@@ -80,9 +84,10 @@ resource "aws_api_gateway_integration" "auth_login" {
   http_method             = aws_api_gateway_method.auth_login.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "POST"
-  uri                     = "http://${var.ms_auth_host}:${var.ms_auth_port}/login"
+  uri                     = "http://${var.ms_auth_host}:${var.ms_auth_port}/auth/login"
 }
 
+# POST /auth/refresh
 resource "aws_api_gateway_resource" "auth_refresh" {
   rest_api_id = aws_api_gateway_rest_api.plus.id
   parent_id   = aws_api_gateway_resource.auth.id
@@ -102,9 +107,10 @@ resource "aws_api_gateway_integration" "auth_refresh" {
   http_method             = aws_api_gateway_method.auth_refresh.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "POST"
-  uri                     = "http://${var.ms_auth_host}:${var.ms_auth_port}/refresh"
+  uri                     = "http://${var.ms_auth_host}:${var.ms_auth_port}/auth/refresh"
 }
 
+# POST /auth/logout
 resource "aws_api_gateway_resource" "auth_logout" {
   rest_api_id = aws_api_gateway_rest_api.plus.id
   parent_id   = aws_api_gateway_resource.auth.id
@@ -124,31 +130,33 @@ resource "aws_api_gateway_integration" "auth_logout" {
   http_method             = aws_api_gateway_method.auth_logout.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "POST"
-  uri                     = "http://${var.ms_auth_host}:${var.ms_auth_port}/logout"
+  uri                     = "http://${var.ms_auth_host}:${var.ms_auth_port}/auth/logout"
 }
 
-resource "aws_api_gateway_resource" "auth_me" {
+# GET /auth/introspect (substitui o antigo /auth/me que não existia no NestJS)
+resource "aws_api_gateway_resource" "auth_introspect" {
   rest_api_id = aws_api_gateway_rest_api.plus.id
   parent_id   = aws_api_gateway_resource.auth.id
-  path_part   = "me"
+  path_part   = "introspect"
 }
 
-resource "aws_api_gateway_method" "auth_me" {
+resource "aws_api_gateway_method" "auth_introspect" {
   rest_api_id   = aws_api_gateway_rest_api.plus.id
-  resource_id   = aws_api_gateway_resource.auth_me.id
+  resource_id   = aws_api_gateway_resource.auth_introspect.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_integration" "auth_me" {
+resource "aws_api_gateway_integration" "auth_introspect" {
   rest_api_id             = aws_api_gateway_rest_api.plus.id
-  resource_id             = aws_api_gateway_resource.auth_me.id
-  http_method             = aws_api_gateway_method.auth_me.http_method
+  resource_id             = aws_api_gateway_resource.auth_introspect.id
+  http_method             = aws_api_gateway_method.auth_introspect.http_method
   type                    = "HTTP_PROXY"
   integration_http_method = "GET"
-  uri                     = "http://${var.ms_auth_host}:${var.ms_auth_port}/me"
+  uri                     = "http://${var.ms_auth_host}:${var.ms_auth_port}/auth/introspect"
 }
 
+# ─── Deployment ───────────────────────────────────────────────────────────────
 resource "aws_api_gateway_deployment" "plus" {
   rest_api_id = aws_api_gateway_rest_api.plus.id
   stage_name  = "v1"
@@ -157,7 +165,7 @@ resource "aws_api_gateway_deployment" "plus" {
     aws_api_gateway_integration.auth_login,
     aws_api_gateway_integration.auth_refresh,
     aws_api_gateway_integration.auth_logout,
-    aws_api_gateway_integration.auth_me,
+    aws_api_gateway_integration.auth_introspect,
   ]
 }
 
