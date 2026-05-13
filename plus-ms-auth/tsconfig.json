@@ -1,10 +1,12 @@
 {
     "compilerOptions": {
-        "module": "nodenext",
-        "moduleResolution": "nodenext",
-        "resolvePackageJsonExports": true,
+        "module": "commonjs",
+        "types": [
+            "jest",
+            "node"
+        ],
+        "rootDir": "./src",
         "esModuleInterop": true,
-        "isolatedModules": true,
         "declaration": true,
         "removeComments": true,
         "emitDecoratorMetadata": true,
@@ -14,6 +16,7 @@
         "sourceMap": true,
         "outDir": "./dist",
         "baseUrl": "./",
+        "ignoreDeprecations": "5.0",
         "incremental": true,
         "skipLibCheck": true,
         "strictNullChecks": true,
