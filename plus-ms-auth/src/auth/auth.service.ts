@@ -16,11 +16,12 @@ export class AuthService {
   // Função auxiliar para gerar os dois tokens
   private async getTokens(userId: string, email: string, role: string) {
     const payload = { sub: userId, email, role };
-    const secret = this.configService.get<string>('JWT_SECRET') || 'fallback_secreto';
+    // Falha o uso se JWT_SECRET não estiver configurado — sem fallback hardcoded.
+    const secret = this.configService.getOrThrow<string>('JWT_SECRET');
 
     const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, { secret, expiresIn: '15m' }), // Access Token rápido
-      this.jwtService.signAsync(payload, { secret, expiresIn: '7d' }),  // Refresh Token demorado
+      this.jwtService.signAsync(payload, { secret, expiresIn: '15m' }),
+      this.jwtService.signAsync(payload, { secret, expiresIn: '7d' }),
     ]);
 
     return { access_token: accessToken, refresh_token: refreshToken };
@@ -33,17 +34,13 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
     if (!isPasswordValid) throw new UnauthorizedException('Credenciais inválidas');
 
-    // Gera os tokens
     const tokens = await this.getTokens(user.id, user.email, user.role);
-    
-    // Salva o Refresh Token no banco
     await this.usersService.updateRefreshToken(user.id, tokens.refresh_token);
 
     return tokens;
   }
 
   async logout(userId: string) {
-    // Para deslogar, simplesmente apagamos o Refresh Token do banco
     await this.usersService.removeRefreshToken(userId);
     return { message: 'Logout realizado com sucesso' };
   }
@@ -54,13 +51,11 @@ export class AuthService {
       throw new ForbiddenException('Acesso negado');
     }
 
-    // Verifica se o Refresh Token enviado bate com o que está no banco
     const isRefreshTokenValid = await bcrypt.compare(refreshToken, user.hashedRefreshToken);
     if (!isRefreshTokenValid) {
       throw new ForbiddenException('Acesso negado');
     }
 
-    // Se bater, gera novos tokens
     const tokens = await this.getTokens(user.id, user.email, user.role);
     await this.usersService.updateRefreshToken(user.id, tokens.refresh_token);
 
